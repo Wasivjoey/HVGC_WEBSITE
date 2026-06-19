@@ -1,0 +1,27 @@
+{% extends "public/base_public.html" %}
+{% block title %}Events · {{ S['church_name'] }}{% endblock %}
+{% block body %}
+<section class="page-hero">
+  <div class="container"><p class="eyebrow">What's on</p><h1>Upcoming events</h1></div>
+</section>
+<section class="section">
+  <div class="container">
+    {% if upcoming %}
+    <div class="event-list">
+      {% for e in upcoming %}
+      <div class="event-row">
+        <span class="date-chip"><span class="d-mon">{{ e['event_date']|evmon }}</span><span class="d-day">{{ e['event_date']|evday }}</span></span>
+        <div class="event-info">
+          <h3>{{ e['title'] }}</h3>
+          <p class="event-meta">{{ e['event_date']|nicedate }}{% if e['event_time'] %} · {{ e['event_time'] }}{% endif %}{% if e['location'] %} · {{ e['location'] }}{% endif %}</p>
+          {% if e['description'] %}<p class="event-desc">{{ e['description'] }}</p>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lead">No upcoming events listed right now — please check back soon.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

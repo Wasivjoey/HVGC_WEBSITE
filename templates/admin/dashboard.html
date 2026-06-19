@@ -1,0 +1,50 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<div class="adm-head">
+  <h1>What would you like to do?</h1>
+  <p class="muted">Pick a task below. Everything you change here updates the website straight away.</p>
+</div>
+
+<div class="task-grid">
+  <a class="task" href="{{ url_for('admin_livestream') }}">
+    <span class="task-ic">📺</span>
+    <h3>Set this week's live stream</h3>
+    <p>Paste your YouTube link so people can watch on Sunday.</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_posts') }}">
+    <span class="task-ic">📝</span>
+    <h3>Write &amp; manage news</h3>
+    <p>Post updates, announcements and stories. ({{ counts['posts'] }} so far)</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_gallery') }}">
+    <span class="task-ic">🖼️</span>
+    <h3>Add photos &amp; graphics</h3>
+    <p>Upload pictures to the gallery. ({{ counts['gallery'] }} photos)</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_presentations') }}">
+    <span class="task-ic">📖</span>
+    <h3>Share sermons &amp; presentations</h3>
+    <p>Add a slide link or upload a file. ({{ counts['presentations'] }} shared)</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_events') }}">
+    <span class="task-ic">📅</span>
+    <h3>Add events</h3>
+    <p>List what's coming up at the chapel. ({{ counts['events'] }} events)</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_messages') }}">
+    <span class="task-ic">✉️</span>
+    <h3>Read messages{% if counts['unread'] %}<span class="task-badge">{{ counts['unread'] }}</span>{% endif %}</h3>
+    <p>See what visitors send through the contact form.</p>
+  </a>
+  <a class="task" href="{{ url_for('admin_settings') }}">
+    <span class="task-ic">⚙️</span>
+    <h3>Edit homepage text</h3>
+    <p>Change the welcome message, service times and contact details.</p>
+  </a>
+  <a class="task" href="{{ url_for('home') }}" target="_blank">
+    <span class="task-ic">🌐</span>
+    <h3>View the live website</h3>
+    <p>See exactly what your visitors see. Opens in a new tab.</p>
+  </a>
+</div>
+{% endblock %}

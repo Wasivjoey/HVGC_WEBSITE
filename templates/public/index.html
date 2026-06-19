@@ -1,0 +1,209 @@
+{% extends "public/base_public.html" %}
+{% block body %}
+
+<section class="hero">
+  <canvas id="bg-canvas"></canvas>
+  <div class="hero-inner">
+    <p class="hero-kicker" data-anim>Harbour View Gospel Chapel</p>
+    <h1 class="hero-title" data-anim>{{ S['tagline'] }}</h1>
+    <p class="hero-verse" data-anim>{{ S['hero_verse'] }}</p>
+    <p class="hero-sub" data-anim>{{ S['hero_subtitle'] }}</p>
+    <div class="hero-actions" data-anim>
+      <a href="#live" class="btn btn-gold">▶ Watch this week's service</a>
+      <a href="#visit" class="btn btn-ghost">Plan your visit</a>
+    </div>
+  </div>
+  <a href="#live" class="scroll-hint" aria-label="Scroll down">⌄</a>
+</section>
+
+<!-- ---------------------------------------------------------------- live -->
+<section class="section" id="live">
+  <div class="container reveal">
+    <p class="eyebrow">Online</p>
+    <h2>{{ S['livestream_heading'] or "This week's live service" }}</h2>
+    {% if S['livestream_url'] %}
+    <div class="video-frame">
+      <iframe src="{{ S['livestream_url']|yt }}" title="Live service"
+              frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen></iframe>
+    </div>
+    {% else %}
+    <div class="placeholder-card">
+      <p>Our live stream link will appear here each week. Please check back on Sunday morning.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- welcome -->
+<section class="section section-tint" id="welcome">
+  <div class="container welcome-grid">
+    <div class="reveal">
+      <p class="eyebrow">Welcome</p>
+      <h2>{{ S['welcome_heading'] }}</h2>
+      <p class="lead prewrap">{{ S['welcome_body'] }}</p>
+      <a href="#visit" class="btn btn-navy">Find a service time</a>
+    </div>
+    <div class="reveal verse-card">
+      <span class="verse-mark">✝</span>
+      <p>“Come to me, all you who are weary and burdened, and I will give you rest.”</p>
+      <span class="verse-ref">Matthew 11:28</span>
+    </div>
+  </div>
+</section>
+
+<!-- -------------------------------------------------------------- events -->
+{% if events %}
+<section class="section" id="events">
+  <div class="container">
+    <div class="reveal section-head">
+      <div><p class="eyebrow">What's on</p><h2>Upcoming events</h2></div>
+      <a href="{{ url_for('events') }}" class="btn btn-ghost">All events</a>
+    </div>
+    <div class="event-list">
+      {% for e in events %}
+      <div class="event-row reveal">
+        <span class="date-chip"><span class="d-mon">{{ e['event_date']|evmon }}</span><span class="d-day">{{ e['event_date']|evday }}</span></span>
+        <div class="event-info">
+          <h3>{{ e['title'] }}</h3>
+          <p class="event-meta">{{ e['event_date']|nicedate }}{% if e['event_time'] %} · {{ e['event_time'] }}{% endif %}{% if e['location'] %} · {{ e['location'] }}{% endif %}</p>
+          {% if e['description'] %}<p class="event-desc">{{ e['description'] }}</p>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ------------------------------------------------------- presentations -->
+{% if presentations %}
+<section class="section" id="presentations">
+  <div class="container">
+    <div class="reveal">
+      <p class="eyebrow">Teaching</p>
+      <h2>Sermons &amp; presentations</h2>
+    </div>
+    <div class="card-grid">
+      {% for p in presentations %}
+      <article class="tile reveal">
+        <span class="tile-ic">📖</span>
+        <h3>{{ p['title'] }}</h3>
+        {% if p['description'] %}<p>{{ p['description'] }}</p>{% endif %}
+        {% if p['url'] %}
+          <a href="{{ p['url'] }}" target="_blank" rel="noopener" class="tile-link">Open ↗</a>
+        {% elif p['filename'] %}
+          <a href="{{ url_for('static', filename=p['filename']) }}" target="_blank" rel="noopener" class="tile-link">Download ↓</a>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ---------------------------------------------------------------- news -->
+{% if posts %}
+<section class="section section-tint" id="news">
+  <div class="container">
+    <div class="reveal section-head">
+      <div><p class="eyebrow">From the chapel</p><h2>Latest news</h2></div>
+      <a href="{{ url_for('blog') }}" class="btn btn-ghost">All news</a>
+    </div>
+    <div class="card-grid">
+      {% for p in posts %}
+      <article class="post-card reveal">
+        {% if p['image'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('static', filename=p['image']) }}" alt=""></a>{% endif %}
+        <div class="post-card-body">
+          <time>{{ p['created_at']|pretty }}</time>
+          <h3><a href="{{ url_for('post', slug=p['slug']) }}">{{ p['title'] }}</a></h3>
+          <p>{{ p['summary'] or (p['body'][:120] ~ '…') }}</p>
+          <a href="{{ url_for('post', slug=p['slug']) }}" class="tile-link">Read more →</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ------------------------------------------------------------- gallery -->
+{% if gallery %}
+<section class="section" id="gallery">
+  <div class="container">
+    <div class="reveal"><p class="eyebrow">Life together</p><h2>Gallery</h2></div>
+    <div class="gallery-grid">
+      {% for g in gallery %}
+      <figure class="reveal"><img src="{{ url_for('static', filename=g['filename']) }}" alt="{{ g['caption'] or '' }}" loading="lazy">
+        {% if g['caption'] %}<figcaption>{{ g['caption'] }}</figcaption>{% endif %}</figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- -------------------------------------------------------------- giving -->
+<section class="section section-tint" id="give">
+  <div class="container give-grid">
+    <div class="reveal">
+      <p class="eyebrow">Generosity</p>
+      <h2>{{ S['giving_heading'] }}</h2>
+      <p class="lead prewrap">{{ S['giving_body'] }}</p>
+      {% if S['giving_url'] %}
+      <a href="{{ S['giving_url'] }}" target="_blank" rel="noopener" class="btn btn-gold">{{ S['giving_button'] or 'Give online' }} ↗</a>
+      {% endif %}
+    </div>
+    <div class="reveal give-card">
+      <span class="verse-mark">❤</span>
+      <p>“God loves a cheerful giver.”</p>
+      <span class="verse-ref">2 Corinthians 9:7</span>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- contact -->
+<section class="section" id="contact">
+  <div class="container contact-grid">
+    <div class="reveal">
+      <p class="eyebrow">Contact</p>
+      <h2>{{ S['contact_heading'] }}</h2>
+      <p class="lead">{{ S['contact_body'] }}</p>
+      <p class="contact-lines">
+        <strong>{{ S['address'] }}</strong><br>
+        <a href="mailto:{{ S['contact_email'] }}">{{ S['contact_email'] }}</a><br>
+        {{ S['contact_phone'] }}
+      </p>
+    </div>
+    <form class="reveal contact-form" method="post" action="{{ url_for('contact') }}">
+      <label>Your name</label>
+      <input type="text" name="name" required>
+      <label>Email <span class="opt">(optional)</span></label>
+      <input type="email" name="email">
+      <label>Message</label>
+      <textarea name="message" rows="5" required></textarea>
+      <button class="btn btn-navy" type="submit">Send message</button>
+    </form>
+  </div>
+</section>
+
+<!-- --------------------------------------------------------------- invite -->
+<section class="section invite">
+  <div class="container reveal" style="text-align:center;">
+    <span class="verse-mark big">⚓</span>
+    <h2>There's a place for you here</h2>
+    <p class="lead">Join us this week — in person or online. We'd love to meet you.</p>
+    <div class="hero-actions" style="justify-content:center;">
+      <a href="#live" class="btn btn-gold">Watch live</a>
+      <a href="#visit" class="btn btn-ghost">Service times &amp; location</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

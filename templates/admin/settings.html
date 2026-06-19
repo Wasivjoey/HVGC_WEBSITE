@@ -1,0 +1,64 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head"><h1>⚙️ Edit homepage text</h1>
+  <p class="muted">Change the words people see on your website. Click Save at the bottom when you're done.</p></div>
+
+<form method="post" class="panel">
+  <h3>Top of the page</h3>
+  <label>Church name</label>
+  <input type="text" name="church_name" value="{{ s['church_name'] }}">
+  <label>Tagline (big heading)</label>
+  <input type="text" name="tagline" value="{{ s['tagline'] }}">
+  <label>Bible verse</label>
+  <input type="text" name="hero_verse" value="{{ s['hero_verse'] }}">
+  <label>Short welcome line</label>
+  <input type="text" name="hero_subtitle" value="{{ s['hero_subtitle'] }}">
+
+  <div class="divider"></div>
+  <h3>Welcome section</h3>
+  <label>Heading</label>
+  <input type="text" name="welcome_heading" value="{{ s['welcome_heading'] }}">
+  <label>Welcome message</label>
+  <textarea name="welcome_body" rows="5">{{ s['welcome_body'] }}</textarea>
+
+  <div class="divider"></div>
+  <h3>Visit &amp; contact</h3>
+  <label>Service times (one per line)</label>
+  <textarea name="service_times" rows="4">{{ s['service_times'] }}</textarea>
+  <label>Address</label>
+  <input type="text" name="address" value="{{ s['address'] }}">
+  <label>Email</label>
+  <input type="email" name="contact_email" value="{{ s['contact_email'] }}">
+  <label>Phone</label>
+  <input type="text" name="contact_phone" value="{{ s['contact_phone'] }}">
+
+  <div class="divider"></div>
+  <h3>Giving section</h3>
+  <label>Heading</label>
+  <input type="text" name="giving_heading" value="{{ s['giving_heading'] }}">
+  <label>Giving message</label>
+  <textarea name="giving_body" rows="4">{{ s['giving_body'] }}</textarea>
+  <label>Donate button link <span class="muted">(your online giving page — leave blank to hide the button)</span></label>
+  <input type="url" name="giving_url" value="{{ s['giving_url'] }}" placeholder="https://...">
+  <label>Donate button label</label>
+  <input type="text" name="giving_button" value="{{ s['giving_button'] }}" placeholder="Give online">
+
+  <div class="divider"></div>
+  <h3>Contact section</h3>
+  <label>Heading</label>
+  <input type="text" name="contact_heading" value="{{ s['contact_heading'] }}">
+  <label>Intro text</label>
+  <textarea name="contact_body" rows="3">{{ s['contact_body'] }}</textarea>
+
+  <div class="divider"></div>
+  <h3>Links &amp; footer</h3>
+  <label>HVGC LINEUP web address (the AV team portal)</label>
+  <input type="url" name="lineup_url" value="{{ s['lineup_url'] }}" placeholder="https://your-lineup-app.onrender.com">
+  <p class="help">This is the link in the menu and footer that takes the AV team to the LINEUP scheduling app.</p>
+  <label>Footer line</label>
+  <input type="text" name="footer_note" value="{{ s['footer_note'] }}">
+
+  <button class="btn btn-primary" style="margin-top:20px;">Save changes</button>
+</form>
+{% endblock %}

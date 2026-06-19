@@ -1,0 +1,34 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head"><h1>🖼️ Photos &amp; graphics</h1>
+  <p class="muted">Upload pictures to show in the gallery on your homepage.</p></div>
+
+<form method="post" enctype="multipart/form-data" class="panel">
+  <h3>Add a photo</h3>
+  <label>Choose an image</label>
+  <input type="file" name="image" accept="image/*" required>
+  <label>Caption <span class="muted">(optional)</span></label>
+  <input type="text" name="caption" placeholder="e.g. Sunday picnic 2026">
+  <button class="btn btn-primary" style="margin-top:14px;">Upload photo</button>
+</form>
+
+<div class="panel">
+  <h3>Your gallery ({{ items|length }})</h3>
+  {% if items %}
+  <div class="adm-gallery">
+    {% for g in items %}
+    <figure>
+      <img src="{{ url_for('static', filename=g['filename']) }}" alt="">
+      <figcaption>{{ g['caption'] or '—' }}</figcaption>
+      <form method="post" action="{{ url_for('admin_gallery_delete', item_id=g['id']) }}" onsubmit="return confirm('Remove this photo?');">
+        <button class="btn btn-sm btn-danger">Remove</button>
+      </form>
+    </figure>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No photos yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

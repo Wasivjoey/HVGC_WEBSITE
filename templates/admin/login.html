@@ -1,0 +1,16 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<div class="login-card">
+  <div class="login-logo">⚓</div>
+  <h1>Website Manager</h1>
+  <p class="muted">Sign in to update the church website</p>
+  <form method="post">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autofocus required>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+    <button class="btn btn-primary btn-block" style="margin-top:18px;">Sign in</button>
+  </form>
+  <p class="hint">First time? Use <strong>admin</strong> / <strong>admin123</strong>, then change your password.</p>
+</div>
+{% endblock %}

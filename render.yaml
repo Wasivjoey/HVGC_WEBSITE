@@ -1,0 +1,26 @@
+# Render.com Blueprint for the Harbour View Gospel Chapel website.
+# New → Blueprint, point at this repo, Apply.
+services:
+  - type: web
+    name: harbour-view-chapel
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT --workers 2 --timeout 60"
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+    # The database + uploaded photos/files reset on each deploy on the free plan.
+    # To keep them, uncomment the disk below AND the DATABASE_PATH env var, then
+    # upgrade to a paid plan (disks aren't available on free instances).
+    #   - key: DATABASE_PATH
+    #     value: /var/data/hvgc.db
+    # disk:
+    #   name: hvgc-data
+    #   mountPath: /var/data
+    #   sizeGB: 1

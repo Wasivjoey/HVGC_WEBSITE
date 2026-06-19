@@ -1,0 +1,30 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head adm-head-row">
+  <div><h1>📅 Events</h1><p class="muted">Add what's coming up. Upcoming events show on the homepage.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin_event_edit') }}">+ Add an event</a>
+</div>
+<div class="panel">
+  {% if items %}
+  <table class="adm-table">
+    <thead><tr><th>Event</th><th>Date</th><th>Where</th><th></th></tr></thead>
+    <tbody>
+    {% for e in items %}
+      <tr>
+        <td><strong>{{ e['title'] }}</strong></td>
+        <td class="muted">{{ e['event_date']|nicedate }}{% if e['event_time'] %}<br>{{ e['event_time'] }}{% endif %}</td>
+        <td class="muted">{{ e['location'] or '—' }}</td>
+        <td class="row-actions">
+          <a class="btn btn-sm" href="{{ url_for('admin_event_edit', event_id=e['id']) }}">Edit</a>
+          <form method="post" action="{{ url_for('admin_event_delete', event_id=e['id']) }}" onsubmit="return confirm('Remove this event?');" style="display:inline;">
+            <button class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">No events yet. Click “Add an event”.</p>{% endif %}
+</div>
+{% endblock %}

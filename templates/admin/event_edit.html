@@ -1,0 +1,18 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_events') }}">← Back to events</a>
+<div class="adm-head"><h1>{{ '✏️ Edit event' if ev else '📅 Add an event' }}</h1></div>
+<form method="post" class="panel">
+  <label>Event name</label>
+  <input type="text" name="title" value="{{ ev['title'] if ev else '' }}" required autofocus>
+  <label>Date</label>
+  <input type="date" name="event_date" value="{{ ev['event_date'] if ev else '' }}" required>
+  <label>Time <span class="muted">(optional)</span></label>
+  <input type="text" name="event_time" value="{{ ev['event_time'] if ev else '' }}" placeholder="e.g. 9:00 AM">
+  <label>Location <span class="muted">(optional)</span></label>
+  <input type="text" name="location" value="{{ ev['location'] if ev else '' }}" placeholder="e.g. Main Auditorium">
+  <label>Description <span class="muted">(optional)</span></label>
+  <textarea name="description" rows="4">{{ ev['description'] if ev else '' }}</textarea>
+  <button class="btn btn-primary" style="margin-top:16px;">{{ 'Save changes' if ev else 'Add event' }}</button>
+</form>
+{% endblock %}

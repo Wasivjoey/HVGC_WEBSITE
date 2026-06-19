@@ -1,0 +1,44 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head"><h1>📖 Sermons &amp; presentations</h1>
+  <p class="muted">Share a link (Google Slides, YouTube, PDF online) or upload a file.</p></div>
+
+<form method="post" enctype="multipart/form-data" class="panel">
+  <h3>Add a presentation</h3>
+  <label>Title</label>
+  <input type="text" name="title" placeholder="e.g. The Anchor of Hope — Sunday sermon" required>
+  <label>Description <span class="muted">(optional)</span></label>
+  <input type="text" name="description">
+  <label>Link <span class="muted">(paste a web address — Google Slides, YouTube, etc.)</span></label>
+  <input type="url" name="url" placeholder="https://docs.google.com/presentation/...">
+  <p class="help">— or —</p>
+  <label>Upload a file <span class="muted">(PDF or PowerPoint)</span></label>
+  <input type="file" name="file" accept=".pdf,.ppt,.pptx,.key,.odp,image/*">
+  <button class="btn btn-primary" style="margin-top:14px;">Add presentation</button>
+</form>
+
+<div class="panel">
+  <h3>Shared presentations ({{ items|length }})</h3>
+  {% if items %}
+  <table class="adm-table">
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td><strong>{{ it['title'] }}</strong>{% if it['description'] %}<br><span class="muted">{{ it['description'] }}</span>{% endif %}</td>
+        <td>{% if it['url'] %}<a href="{{ it['url'] }}" target="_blank">Link ↗</a>
+            {% elif it['filename'] %}<a href="{{ url_for('static', filename=it['filename']) }}" target="_blank">File ↓</a>{% endif %}</td>
+        <td class="row-actions">
+          <form method="post" action="{{ url_for('admin_presentation_delete', item_id=it['id']) }}" onsubmit="return confirm('Remove this?');">
+            <button class="btn btn-sm btn-danger">Remove</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nothing shared yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

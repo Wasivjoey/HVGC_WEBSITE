@@ -1,0 +1,29 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head"><h1>📺 This week's live stream</h1>
+  <p class="muted">Paste the link to your YouTube live stream (or any YouTube video). It will show on the homepage.</p></div>
+
+<div class="panel">
+  <form method="post">
+    <label for="livestream_heading">Heading shown above the video</label>
+    <input type="text" id="livestream_heading" name="livestream_heading" value="{{ s['livestream_heading'] }}">
+
+    <label for="livestream_url">YouTube link</label>
+    <input type="url" id="livestream_url" name="livestream_url" value="{{ s['livestream_url'] }}"
+           placeholder="https://www.youtube.com/watch?v=...">
+    <p class="help">Tip: open your stream on YouTube, click <strong>Share</strong>, copy the link, and paste it
+       here. Leave it empty to hide the video until Sunday.</p>
+    <button class="btn btn-primary">Save live stream</button>
+  </form>
+
+  {% if s['livestream_url'] %}
+  <div class="preview">
+    <p class="help">Preview:</p>
+    <div class="video-frame">
+      <iframe src="{{ s['livestream_url']|yt }}" frameborder="0" allowfullscreen></iframe>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

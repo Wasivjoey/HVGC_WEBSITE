@@ -1,0 +1,27 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_posts') }}">← Back to posts</a>
+<div class="adm-head"><h1>{{ '✏️ Edit post' if p else '📝 Write a new post' }}</h1></div>
+
+<form method="post" enctype="multipart/form-data" class="panel">
+  <label>Title</label>
+  <input type="text" name="title" value="{{ p['title'] if p else '' }}" required autofocus>
+
+  <label>Short summary <span class="muted">(one or two lines shown in the list)</span></label>
+  <input type="text" name="summary" value="{{ p['summary'] if p else '' }}">
+
+  <label>Main text</label>
+  <textarea name="body" rows="12" placeholder="Write your post here…">{{ p['body'] if p else '' }}</textarea>
+
+  <label>Picture <span class="muted">(optional)</span></label>
+  {% if p and p['image'] %}<img class="thumb" src="{{ url_for('static', filename=p['image']) }}" alt=""><br>{% endif %}
+  <input type="file" name="image" accept="image/*">
+
+  <label class="check" style="margin-top:14px;">
+    <input type="checkbox" name="published" {{ 'checked' if (not p) or p['published'] }}>
+    <span>Show this post on the website</span>
+  </label>
+
+  <button class="btn btn-primary" style="margin-top:18px;">{{ 'Save changes' if p else 'Publish post' }}</button>
+</form>
+{% endblock %}

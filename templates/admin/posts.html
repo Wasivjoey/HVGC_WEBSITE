@@ -1,0 +1,33 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head adm-head-row">
+  <div><h1>📝 News &amp; blog posts</h1><p class="muted">Write updates that appear on your website.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin_post_edit') }}">+ Write a new post</a>
+</div>
+
+<div class="panel">
+  {% if posts %}
+  <table class="adm-table">
+    <thead><tr><th>Title</th><th>Date</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in posts %}
+      <tr>
+        <td><strong>{{ p['title'] }}</strong></td>
+        <td class="muted">{{ p['created_at']|pretty }}</td>
+        <td>{% if p['published'] %}<span class="pill pill-green">Live</span>{% else %}<span class="pill pill-gray">Hidden</span>{% endif %}</td>
+        <td class="row-actions">
+          <a class="btn btn-sm" href="{{ url_for('admin_post_edit', post_id=p['id']) }}">Edit</a>
+          <form method="post" action="{{ url_for('admin_post_delete', post_id=p['id']) }}" onsubmit="return confirm('Delete this post?');" style="display:inline;">
+            <button class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No posts yet. Click “Write a new post” to add your first one.</p>
+  {% endif %}
+</div>
+{% endblock %}

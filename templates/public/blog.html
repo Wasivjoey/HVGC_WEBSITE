@@ -1,0 +1,31 @@
+{% extends "public/base_public.html" %}
+{% block title %}News · {{ S['church_name'] }}{% endblock %}
+{% block body %}
+<section class="page-hero">
+  <div class="container">
+    <p class="eyebrow">From the chapel</p>
+    <h1>News &amp; updates</h1>
+  </div>
+</section>
+<section class="section">
+  <div class="container">
+    {% if posts %}
+    <div class="card-grid">
+      {% for p in posts %}
+      <article class="post-card">
+        {% if p['image'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('static', filename=p['image']) }}" alt=""></a>{% endif %}
+        <div class="post-card-body">
+          <time>{{ p['created_at']|pretty }}</time>
+          <h3><a href="{{ url_for('post', slug=p['slug']) }}">{{ p['title'] }}</a></h3>
+          <p>{{ p['summary'] or (p['body'][:140] ~ '…') }}</p>
+          <a href="{{ url_for('post', slug=p['slug']) }}" class="tile-link">Read more →</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lead">No news yet — check back soon.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

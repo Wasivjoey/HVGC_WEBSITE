@@ -1,0 +1,21 @@
+{% extends "admin/base_admin.html" %}
+{% block body %}
+<a class="back" href="{{ url_for('admin_dashboard') }}">← Back</a>
+<div class="adm-head"><h1>✉️ Messages</h1><p class="muted">Messages people send through the contact form on your website.</p></div>
+<div class="panel">
+  {% if items %}
+    {% for m in items %}
+    <div class="msg">
+      <div class="msg-head">
+        <div><strong>{{ m['name'] }}</strong>{% if m['email'] %} · <a href="mailto:{{ m['email'] }}">{{ m['email'] }}</a>{% endif %}
+          <span class="muted"> · {{ m['created_at']|pretty }}</span></div>
+        <form method="post" action="{{ url_for('admin_message_delete', msg_id=m['id']) }}" onsubmit="return confirm('Delete this message?');">
+          <button class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+      <p class="msg-body">{{ m['body'] }}</p>
+    </div>
+    {% endfor %}
+  {% else %}<p class="muted">No messages yet.</p>{% endif %}
+</div>
+{% endblock %}
