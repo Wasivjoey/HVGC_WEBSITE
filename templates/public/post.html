@@ -6,7 +6,7 @@
     <a href="{{ url_for('blog') }}" class="back-link">← All news</a>
     <p class="eyebrow">{{ p['created_at']|pretty }}</p>
     <h1>{{ p['title'] }}</h1>
-    {% if p['image'] %}<img class="article-img" src="{{ url_for('static', filename=p['image']) }}" alt="">{% endif %}
+    {% if p['image_media_id'] %}<img class="article-img" src="{{ url_for('media', media_id=p['image_media_id']) }}" alt="">{% endif %}
     <div class="article-body prewrap">{{ p['body'] }}</div>
     <a href="{{ url_for('blog') }}" class="btn btn-ghost" style="margin-top:30px;">← Back to news</a>
   </div>

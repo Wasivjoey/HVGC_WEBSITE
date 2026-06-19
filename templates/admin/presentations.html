@@ -27,7 +27,7 @@
       <tr>
         <td><strong>{{ it['title'] }}</strong>{% if it['description'] %}<br><span class="muted">{{ it['description'] }}</span>{% endif %}</td>
         <td>{% if it['url'] %}<a href="{{ it['url'] }}" target="_blank">Link ↗</a>
-            {% elif it['filename'] %}<a href="{{ url_for('static', filename=it['filename']) }}" target="_blank">File ↓</a>{% endif %}</td>
+            {% elif it['file_media_id'] %}<a href="{{ url_for('media', media_id=it['file_media_id']) }}" target="_blank">File ↓</a>{% endif %}</td>
         <td class="row-actions">
           <form method="post" action="{{ url_for('admin_presentation_delete', item_id=it['id']) }}" onsubmit="return confirm('Remove this?');">
             <button class="btn btn-sm btn-danger">Remove</button>

@@ -1,0 +1,52 @@
+{% extends "public/base_public.html" %}
+{% block title %}Gallery · {{ S['church_name'] }}{% endblock %}
+{% block body %}
+<section class="page-hero">
+  <div class="container"><p class="eyebrow">Life together</p><h1>Photo gallery</h1></div>
+</section>
+<section class="section">
+  <div class="container">
+    {% if items %}
+    <div class="gallery-grid">
+      {% for g in items %}
+      <figure>
+        <img src="{{ url_for('media', media_id=g['media_id']) }}" alt="{{ g['caption'] or '' }}" loading="lazy"
+             data-full="{{ url_for('media', media_id=g['media_id']) }}" data-caption="{{ g['caption'] or '' }}"
+             onclick="openLightbox(this)">
+        {% if g['caption'] %}<figcaption>{{ g['caption'] }}</figcaption>{% endif %}
+      </figure>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lead">No photos yet — please check back soon.</p>
+    {% endif %}
+  </div>
+</section>
+
+<div id="lightbox" class="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lb-close" aria-label="Close" onclick="closeLightbox()">✕</button>
+  <button class="lb-nav lb-prev" aria-label="Previous" onclick="lbStep(-1)">‹</button>
+  <figure class="lb-figure"><img id="lb-img" src="" alt=""><figcaption id="lb-cap"></figcaption></figure>
+  <button class="lb-nav lb-next" aria-label="Next" onclick="lbStep(1)">›</button>
+</div>
+
+<script>
+  var lbImgs = Array.prototype.slice.call(document.querySelectorAll('.gallery-grid img'));
+  var lbIndex = 0;
+  function showLb(i){
+    lbIndex = (i + lbImgs.length) % lbImgs.length;
+    var img = lbImgs[lbIndex];
+    document.getElementById('lb-img').src = img.getAttribute('data-full');
+    document.getElementById('lb-cap').textContent = img.getAttribute('data-caption') || '';
+  }
+  function openLightbox(img){ showLb(lbImgs.indexOf(img)); document.getElementById('lightbox').classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow=''; }
+  function lbStep(d){ showLb(lbIndex + d); }
+  document.addEventListener('keydown', function(e){
+    if(!document.getElementById('lightbox').classList.contains('open')) return;
+    if(e.key==='Escape') closeLightbox();
+    if(e.key==='ArrowRight') lbStep(1);
+    if(e.key==='ArrowLeft') lbStep(-1);
+  });
+</script>
+{% endblock %}

@@ -13,7 +13,7 @@
     <div class="card-grid">
       {% for p in posts %}
       <article class="post-card">
-        {% if p['image'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('static', filename=p['image']) }}" alt=""></a>{% endif %}
+        {% if p['image_media_id'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('media', media_id=p['image_media_id']) }}" alt=""></a>{% endif %}
         <div class="post-card-body">
           <time>{{ p['created_at']|pretty }}</time>
           <h3><a href="{{ url_for('post', slug=p['slug']) }}">{{ p['title'] }}</a></h3>

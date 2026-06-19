@@ -1,17 +1,29 @@
 """Database layer for the Harbour View Gospel Chapel website.
 
-SQLite via the standard library — zero external dependencies. Everything a
-non-technical editor changes (text, livestream link, blog posts, photos,
-presentations) lives here and is edited through the admin panel.
+Supports two backends, chosen automatically:
+  * Postgres  — when DATABASE_URL is a postgres:// / postgresql:// URL (psycopg2)
+  * SQLite    — otherwise, at DATABASE_PATH (zero-dependency, local dev)
+
+Uploaded sermon files and photos are stored as binary IN the database (a `media`
+table), so they survive redeploys on hosts with an ephemeral filesystem and can
+be browsed through the gallery without a separate disk.
 """
 
 import os
+import re
 import sqlite3
-from datetime import datetime
+import time
+from datetime import datetime, timedelta, date
 
 from werkzeug.security import generate_password_hash
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+USE_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "hvgc.db"))
+
+if USE_PG:
+    import psycopg2
+    import psycopg2.extras
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings (
@@ -25,38 +37,48 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL
 );
 
+-- Binary store for uploaded images and documents.
+CREATE TABLE IF NOT EXISTS media (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    content_type TEXT NOT NULL,
+    filename     TEXT,
+    data         BLOB NOT NULL,
+    created_at   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS posts (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    title      TEXT NOT NULL,
-    slug       TEXT NOT NULL UNIQUE,
-    summary    TEXT,
-    body       TEXT,
-    image      TEXT,
-    published  INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    title          TEXT NOT NULL,
+    slug           TEXT NOT NULL UNIQUE,
+    summary        TEXT,
+    body           TEXT,
+    image_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    published      INTEGER NOT NULL DEFAULT 1,
+    created_at     TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS gallery (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename   TEXT NOT NULL,
+    media_id   INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
     caption    TEXT,
     created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS presentations (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    title       TEXT NOT NULL,
-    description TEXT,
-    url         TEXT,          -- external link (Google Slides, YouTube, etc.)
-    filename    TEXT,          -- or an uploaded file (PDF/PPTX)
-    created_at  TEXT NOT NULL
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    title         TEXT NOT NULL,
+    description   TEXT,
+    url           TEXT,                 -- external link (Google Slides, YouTube, etc.)
+    file_media_id INTEGER REFERENCES media(id) ON DELETE SET NULL,
+    file_name     TEXT,                 -- original name for the download
+    created_at    TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     title       TEXT NOT NULL,
     description TEXT,
-    event_date  TEXT NOT NULL,  -- YYYY-MM-DD
+    event_date  TEXT NOT NULL,
     event_time  TEXT,
     location    TEXT,
     created_at  TEXT NOT NULL
@@ -104,33 +126,111 @@ DEFAULT_SETTINGS = {
 }
 
 
+# --------------------------------------------------------------------- Postgres
+def _translate(sql):
+    return sql.replace("?", "%s")
+
+
+class _PGConn:
+    def __init__(self, raw):
+        self.raw = raw
+
+    @staticmethod
+    def _bind(params):
+        # bytea: psycopg2 needs binary values wrapped.
+        out = []
+        for p in params:
+            if isinstance(p, (bytes, bytearray, memoryview)):
+                out.append(psycopg2.Binary(p))
+            else:
+                out.append(p)
+        return out
+
+    def execute(self, sql, params=()):
+        cur = self.raw.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(_translate(sql), self._bind(params))
+        return cur
+
+    def executemany(self, sql, seq):
+        cur = self.raw.cursor()
+        cur.executemany(_translate(sql), [self._bind(p) for p in seq])
+        cur.close()
+
+    def executescript(self, sql):
+        cur = self.raw.cursor()
+        cur.execute(sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+                       .replace("BLOB", "BYTEA"))
+        cur.close()
+
+    def commit(self):
+        self.raw.commit()
+
+    def close(self):
+        self.raw.close()
+
+
 def get_db():
+    if USE_PG:
+        return _PGConn(psycopg2.connect(DATABASE_URL))
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def execute_returning_id(conn, sql, params=()):
+    if USE_PG:
+        cur = conn.execute(sql.rstrip().rstrip(";") + " RETURNING id", params)
+        return cur.fetchone()["id"]
+    return conn.execute(sql, params).lastrowid
 
 
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds")
 
 
+_INIT_LOCK_KEY = 514317
+
+
+def _connect_with_retry(attempts=15, delay=2):
+    last = None
+    for i in range(attempts):
+        try:
+            return get_db()
+        except Exception as e:
+            last = e
+            if i < attempts - 1:
+                print(f"[db] not ready ({e}); retry in {delay}s", flush=True)
+                time.sleep(delay)
+    raise last
+
+
 def init_db():
-    conn = get_db()
-    conn.executescript(SCHEMA)
-    conn.commit()
-    _seed(conn)
-    conn.close()
+    conn = _connect_with_retry()
+    locked = False
+    try:
+        if USE_PG:
+            conn.execute("SELECT pg_advisory_lock(?)", (_INIT_LOCK_KEY,))
+            locked = True
+        conn.executescript(SCHEMA)
+        conn.commit()
+        _seed(conn)
+    finally:
+        if locked:
+            try:
+                conn.execute("SELECT pg_advisory_unlock(?)", (_INIT_LOCK_KEY,))
+                conn.commit()
+            except Exception:
+                pass
+        conn.close()
 
 
 def _seed(conn):
-    # Default settings (only fills in missing keys).
     for k, v in DEFAULT_SETTINGS.items():
-        row = conn.execute("SELECT 1 FROM settings WHERE key = ?", (k,)).fetchone()
-        if row is None:
+        if conn.execute("SELECT 1 FROM settings WHERE key = ?", (k,)).fetchone() is None:
             conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (k, v))
     conn.commit()
 
-    # Seed an admin editor account once.
     if conn.execute("SELECT 1 FROM users WHERE username = ?", ("admin",)).fetchone() is None:
         conn.execute(
             "INSERT INTO users (username, password_hash) VALUES (?, ?)",
@@ -138,9 +238,7 @@ def _seed(conn):
         )
         conn.commit()
 
-    # Seed a couple of upcoming sample events once.
     if conn.execute("SELECT COUNT(*) AS c FROM events").fetchone()["c"] == 0:
-        from datetime import date, timedelta
         today = date.today()
         nxt_sun = today + timedelta(days=(6 - today.weekday()) % 7 or 7)
         conn.executemany(
@@ -155,7 +253,6 @@ def _seed(conn):
         )
         conn.commit()
 
-    # Seed a welcome blog post once.
     if conn.execute("SELECT COUNT(*) AS c FROM posts").fetchone()["c"] == 0:
         conn.execute(
             "INSERT INTO posts (title, slug, summary, body, published, created_at)"

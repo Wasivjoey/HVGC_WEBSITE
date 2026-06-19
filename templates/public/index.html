@@ -92,8 +92,8 @@
         {% if p['description'] %}<p>{{ p['description'] }}</p>{% endif %}
         {% if p['url'] %}
           <a href="{{ p['url'] }}" target="_blank" rel="noopener" class="tile-link">Open ↗</a>
-        {% elif p['filename'] %}
-          <a href="{{ url_for('static', filename=p['filename']) }}" target="_blank" rel="noopener" class="tile-link">Download ↓</a>
+        {% elif p['file_media_id'] %}
+          <a href="{{ url_for('media', media_id=p['file_media_id']) }}" target="_blank" rel="noopener" class="tile-link">Open ↓</a>
         {% endif %}
       </article>
       {% endfor %}
@@ -113,7 +113,7 @@
     <div class="card-grid">
       {% for p in posts %}
       <article class="post-card reveal">
-        {% if p['image'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('static', filename=p['image']) }}" alt=""></a>{% endif %}
+        {% if p['image_media_id'] %}<a href="{{ url_for('post', slug=p['slug']) }}"><img src="{{ url_for('media', media_id=p['image_media_id']) }}" alt=""></a>{% endif %}
         <div class="post-card-body">
           <time>{{ p['created_at']|pretty }}</time>
           <h3><a href="{{ url_for('post', slug=p['slug']) }}">{{ p['title'] }}</a></h3>
@@ -131,10 +131,13 @@
 {% if gallery %}
 <section class="section" id="gallery">
   <div class="container">
-    <div class="reveal"><p class="eyebrow">Life together</p><h2>Gallery</h2></div>
+    <div class="reveal section-head">
+      <div><p class="eyebrow">Life together</p><h2>Gallery</h2></div>
+      <a href="{{ url_for('gallery') }}" class="btn btn-ghost">Browse all photos</a>
+    </div>
     <div class="gallery-grid">
       {% for g in gallery %}
-      <figure class="reveal"><img src="{{ url_for('static', filename=g['filename']) }}" alt="{{ g['caption'] or '' }}" loading="lazy">
+      <figure class="reveal"><a href="{{ url_for('gallery') }}"><img src="{{ url_for('media', media_id=g['media_id']) }}" alt="{{ g['caption'] or '' }}" loading="lazy"></a>
         {% if g['caption'] %}<figcaption>{{ g['caption'] }}</figcaption>{% endif %}</figure>
       {% endfor %}
     </div>

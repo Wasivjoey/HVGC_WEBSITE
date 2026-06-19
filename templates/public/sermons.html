@@ -1,0 +1,30 @@
+{% extends "public/base_public.html" %}
+{% block title %}Sermons · {{ S['church_name'] }}{% endblock %}
+{% block body %}
+<section class="page-hero">
+  <div class="container"><p class="eyebrow">Teaching</p><h1>Sermons &amp; presentations</h1></div>
+</section>
+<section class="section">
+  <div class="container">
+    {% if items %}
+    <div class="card-grid">
+      {% for p in items %}
+      <article class="tile">
+        <span class="tile-ic">📖</span>
+        <h3>{{ p['title'] }}</h3>
+        {% if p['description'] %}<p>{{ p['description'] }}</p>{% endif %}
+        {% if p['url'] %}
+          <a href="{{ p['url'] }}" target="_blank" rel="noopener" class="tile-link">Open ↗</a>
+        {% elif p['file_media_id'] %}
+          <a href="{{ url_for('media', media_id=p['file_media_id']) }}" target="_blank" rel="noopener" class="tile-link">Open ↓</a>
+        {% endif %}
+        <p class="meta-date">{{ p['created_at']|pretty }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lead">No sermons shared yet — please check back soon.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

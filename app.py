@@ -1,22 +1,25 @@
 """Harbour View Gospel Chapel — public website + simple content manager.
 
-Run locally:   python3 app.py   →   http://localhost:5000
+Sermon files and photos are stored in the database (Postgres or SQLite) so they
+persist across deploys and can be browsed in the gallery.
+
+Run locally:   python3 app.py     →  http://localhost:5000
 Production:    gunicorn 'app:create_app()' --bind 0.0.0.0:5000
 """
 
 import os
 import re
-import uuid
+import mimetypes
 from functools import wraps
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, session, abort,
-    send_from_directory,
+    Response,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
-from db import get_db, init_db, now_iso, get_settings
+from db import get_db, init_db, now_iso, get_settings, execute_returning_id
 
 ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif", "webp"}
 ALLOWED_DOC = {"pdf", "ppt", "pptx", "key", "odp", "png", "jpg", "jpeg"}
@@ -24,16 +27,13 @@ ALLOWED_DOC = {"pdf", "ppt", "pptx", "key", "odp", "png", "jpg", "jpeg"}
 
 # --------------------------------------------------------------------- helpers
 def youtube_embed(url):
-    """Turn a pasted YouTube link into an embeddable URL. Returns '' if blank."""
     if not url:
         return ""
     url = url.strip()
     m = re.search(r"(?:youtube\.com/(?:watch\?v=|embed/|live/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})", url)
     if m:
         return f"https://www.youtube.com/embed/{m.group(1)}"
-    if "youtube.com/embed/" in url:
-        return url
-    return url  # let the admin paste a full embed URL too
+    return url
 
 
 def slugify(text):
@@ -54,31 +54,44 @@ def unique_slug(conn, text, post_id=None):
         slug = f"{base}-{n}"
 
 
-def save_upload(file_storage, allowed, subdir="uploads"):
+def _ext(filename):
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+def save_media(conn, file_storage, allowed):
+    """Store an uploaded file's bytes in the media table. Returns (media_id, original_name)."""
     if file_storage is None or not file_storage.filename:
-        return None
-    ext = file_storage.filename.rsplit(".", 1)[-1].lower() if "." in file_storage.filename else ""
-    if ext not in allowed:
+        return None, None
+    if _ext(file_storage.filename) not in allowed:
         raise ValueError("Sorry, that file type isn't allowed.")
-    safe = secure_filename(file_storage.filename) or "file"
-    stored = f"{uuid.uuid4().hex}_{safe}"
-    folder = os.path.join(os.path.dirname(__file__), "static", subdir)
-    os.makedirs(folder, exist_ok=True)
-    file_storage.save(os.path.join(folder, stored))
-    return f"{subdir}/{stored}"
+    data = file_storage.read()
+    if not data:
+        return None, None
+    content_type = file_storage.mimetype or mimetypes.guess_type(file_storage.filename)[0] \
+        or "application/octet-stream"
+    media_id = execute_returning_id(
+        conn,
+        "INSERT INTO media (content_type, filename, data, created_at) VALUES (?, ?, ?, ?)",
+        (content_type, secure_filename(file_storage.filename), data, now_iso()),
+    )
+    return media_id, file_storage.filename
 
 
-def delete_upload(rel_path):
-    if not rel_path:
-        return
-    try:
-        os.remove(os.path.join(os.path.dirname(__file__), "static", rel_path))
-    except OSError:
-        pass
+def delete_media(conn, media_id):
+    if media_id:
+        conn.execute("DELETE FROM media WHERE id = ?", (media_id,))
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*a, **k):
+        if not session.get("admin"):
+            return redirect(url_for("admin_login"))
+        return view(*a, **k)
+    return wrapped
 
 
 def send_email(to_address, subject, body):
-    """Optional notification email. Logs and returns False if SMTP isn't set."""
     host = os.environ.get("SMTP_HOST")
     if not host or not to_address:
         print(f"[email not sent — SMTP not configured] To: {to_address} | {subject}")
@@ -103,19 +116,10 @@ def send_email(to_address, subject, body):
         return False
 
 
-def login_required(view):
-    @wraps(view)
-    def wrapped(*a, **k):
-        if not session.get("admin"):
-            return redirect(url_for("admin_login"))
-        return view(*a, **k)
-    return wrapped
-
-
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me")
-    app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024
     init_db()
 
     @app.context_processor
@@ -166,7 +170,24 @@ def create_app():
         except (ValueError, TypeError):
             return ""
 
-    # ----------------------------------------------------------------- public
+    # --------------------------------------------------------------- media
+    @app.route("/media/<int:media_id>")
+    def media(media_id):
+        conn = get_db()
+        row = conn.execute(
+            "SELECT content_type, filename, data FROM media WHERE id = ?", (media_id,)
+        ).fetchone()
+        conn.close()
+        if row is None:
+            abort(404)
+        data = bytes(row["data"])
+        resp = Response(data, mimetype=row["content_type"] or "application/octet-stream")
+        if row["filename"]:
+            resp.headers["Content-Disposition"] = f'inline; filename="{row["filename"]}"'
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
+
+    # --------------------------------------------------------------- public
     @app.route("/")
     def home():
         from datetime import date
@@ -188,6 +209,20 @@ def create_app():
         return render_template("public/index.html", posts=posts, gallery=gallery,
                                presentations=presentations, events=events)
 
+    @app.route("/gallery")
+    def gallery():
+        conn = get_db()
+        items = conn.execute("SELECT * FROM gallery ORDER BY created_at DESC").fetchall()
+        conn.close()
+        return render_template("public/gallery.html", items=items)
+
+    @app.route("/sermons")
+    def sermons():
+        conn = get_db()
+        items = conn.execute("SELECT * FROM presentations ORDER BY created_at DESC").fetchall()
+        conn.close()
+        return render_template("public/sermons.html", items=items)
+
     @app.route("/events")
     def events():
         from datetime import date
@@ -198,30 +233,6 @@ def create_app():
         ).fetchall()
         conn.close()
         return render_template("public/events.html", upcoming=upcoming)
-
-    @app.route("/contact", methods=["POST"])
-    def contact():
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip()
-        body = request.form.get("message", "").strip()
-        if not name or not body:
-            flash("Please add your name and a message.", "warning")
-            return redirect(url_for("home") + "#contact")
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO messages (name, email, body, created_at) VALUES (?, ?, ?, ?)",
-            (name, email, body, now_iso()),
-        )
-        church_email = conn.execute(
-            "SELECT value FROM settings WHERE key = 'contact_email'"
-        ).fetchone()
-        conn.commit()
-        conn.close()
-        if church_email and church_email["value"]:
-            send_email(church_email["value"], f"Website message from {name}",
-                       f"From: {name} <{email}>\n\n{body}")
-        flash("Thank you! Your message has been sent.", "success")
-        return redirect(url_for("home") + "#contact")
 
     @app.route("/blog")
     def blog():
@@ -235,13 +246,31 @@ def create_app():
     @app.route("/blog/<slug>")
     def post(slug):
         conn = get_db()
-        p = conn.execute(
-            "SELECT * FROM posts WHERE slug = ? AND published = 1", (slug,)
-        ).fetchone()
+        p = conn.execute("SELECT * FROM posts WHERE slug = ? AND published = 1", (slug,)).fetchone()
         conn.close()
         if p is None:
             abort(404)
         return render_template("public/post.html", p=p)
+
+    @app.route("/contact", methods=["POST"])
+    def contact():
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        body = request.form.get("message", "").strip()
+        if not name or not body:
+            flash("Please add your name and a message.", "warning")
+            return redirect(url_for("home") + "#contact")
+        conn = get_db()
+        conn.execute("INSERT INTO messages (name, email, body, created_at) VALUES (?, ?, ?, ?)",
+                     (name, email, body, now_iso()))
+        church_email = conn.execute("SELECT value FROM settings WHERE key = 'contact_email'").fetchone()
+        conn.commit()
+        conn.close()
+        if church_email and church_email["value"]:
+            send_email(church_email["value"], f"Website message from {name}",
+                       f"From: {name} <{email}>\n\n{body}")
+        flash("Thank you! Your message has been sent.", "success")
+        return redirect(url_for("home") + "#contact")
 
     @app.route("/healthz")
     def healthz():
@@ -253,12 +282,11 @@ def create_app():
         if session.get("admin"):
             return redirect(url_for("admin_dashboard"))
         if request.method == "POST":
-            username = request.form.get("username", "").strip()
-            password = request.form.get("password", "")
             conn = get_db()
-            u = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+            u = conn.execute("SELECT * FROM users WHERE username = ?",
+                             (request.form.get("username", "").strip(),)).fetchone()
             conn.close()
-            if u and check_password_hash(u["password_hash"], password):
+            if u and check_password_hash(u["password_hash"], request.form.get("password", "")):
                 session["admin"] = u["username"]
                 return redirect(url_for("admin_dashboard"))
             flash("Incorrect username or password.", "danger")
@@ -283,7 +311,6 @@ def create_app():
         conn.close()
         return render_template("admin/dashboard.html", counts=counts)
 
-    # ---- Homepage text & settings
     @app.route("/admin/settings", methods=["GET", "POST"])
     @login_required
     def admin_settings():
@@ -305,7 +332,6 @@ def create_app():
         conn.close()
         return render_template("admin/settings.html", s=s)
 
-    # ---- Weekly live stream link
     @app.route("/admin/livestream", methods=["GET", "POST"])
     @login_required
     def admin_livestream():
@@ -341,42 +367,34 @@ def create_app():
         if post_id:
             p = conn.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
             if p is None:
-                conn.close()
-                abort(404)
+                conn.close(); abort(404)
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             summary = request.form.get("summary", "").strip()
             body = request.form.get("body", "").strip()
             published = 1 if request.form.get("published") == "on" else 0
             if not title:
-                flash("Please give your post a title.", "danger")
-                conn.close()
-                return redirect(request.url)
+                conn.close(); flash("Please give your post a title.", "danger"); return redirect(request.url)
             try:
-                image = save_upload(request.files.get("image"), ALLOWED_IMAGE)
+                new_media, _ = save_media(conn, request.files.get("image"), ALLOWED_IMAGE)
             except ValueError as e:
-                flash(str(e), "danger"); conn.close(); return redirect(request.url)
+                conn.close(); flash(str(e), "danger"); return redirect(request.url)
             if post_id:
                 slug = unique_slug(conn, title, post_id)
-                if image:
-                    delete_upload(p["image"])
-                conn.execute(
-                    "UPDATE posts SET title=?, slug=?, summary=?, body=?, published=?"
-                    + (", image=?" if image else "") + " WHERE id=?",
-                    ((title, slug, summary, body, published, image, post_id) if image
-                     else (title, slug, summary, body, published, post_id)),
-                )
+                if new_media:
+                    delete_media(conn, p["image_media_id"])
+                    conn.execute("UPDATE posts SET image_media_id = ? WHERE id = ?", (new_media, post_id))
+                conn.execute("UPDATE posts SET title=?, slug=?, summary=?, body=?, published=? WHERE id=?",
+                             (title, slug, summary, body, published, post_id))
                 flash("Post updated.", "success")
             else:
                 slug = unique_slug(conn, title)
                 conn.execute(
-                    "INSERT INTO posts (title, slug, summary, body, image, published, created_at)"
+                    "INSERT INTO posts (title, slug, summary, body, image_media_id, published, created_at)"
                     " VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (title, slug, summary, body, image, published, now_iso()),
-                )
+                    (title, slug, summary, body, new_media, published, now_iso()))
                 flash("Post published.", "success")
-            conn.commit()
-            conn.close()
+            conn.commit(); conn.close()
             return redirect(url_for("admin_posts"))
         conn.close()
         return render_template("admin/post_edit.html", p=p)
@@ -385,30 +403,27 @@ def create_app():
     @login_required
     def admin_post_delete(post_id):
         conn = get_db()
-        p = conn.execute("SELECT image FROM posts WHERE id = ?", (post_id,)).fetchone()
-        if p:
-            delete_upload(p["image"])
+        p = conn.execute("SELECT image_media_id FROM posts WHERE id = ?", (post_id,)).fetchone()
         conn.execute("DELETE FROM posts WHERE id = ?", (post_id,))
-        conn.commit()
-        conn.close()
+        if p:
+            delete_media(conn, p["image_media_id"])
+        conn.commit(); conn.close()
         flash("Post deleted.", "info")
         return redirect(url_for("admin_posts"))
 
-    # ---- Gallery (graphics / photos)
+    # ---- Gallery
     @app.route("/admin/gallery", methods=["GET", "POST"])
     @login_required
     def admin_gallery():
         conn = get_db()
         if request.method == "POST":
             try:
-                stored = save_upload(request.files.get("image"), ALLOWED_IMAGE)
+                mid, _ = save_media(conn, request.files.get("image"), ALLOWED_IMAGE)
             except ValueError as e:
-                flash(str(e), "danger"); conn.close(); return redirect(url_for("admin_gallery"))
-            if stored:
-                conn.execute(
-                    "INSERT INTO gallery (filename, caption, created_at) VALUES (?, ?, ?)",
-                    (stored, request.form.get("caption", "").strip(), now_iso()),
-                )
+                conn.close(); flash(str(e), "danger"); return redirect(url_for("admin_gallery"))
+            if mid:
+                conn.execute("INSERT INTO gallery (media_id, caption, created_at) VALUES (?, ?, ?)",
+                             (mid, request.form.get("caption", "").strip(), now_iso()))
                 conn.commit()
                 flash("Photo added to the gallery.", "success")
             else:
@@ -423,12 +438,11 @@ def create_app():
     @login_required
     def admin_gallery_delete(item_id):
         conn = get_db()
-        row = conn.execute("SELECT filename FROM gallery WHERE id = ?", (item_id,)).fetchone()
-        if row:
-            delete_upload(row["filename"])
+        row = conn.execute("SELECT media_id FROM gallery WHERE id = ?", (item_id,)).fetchone()
         conn.execute("DELETE FROM gallery WHERE id = ?", (item_id,))
-        conn.commit()
-        conn.close()
+        if row:
+            delete_media(conn, row["media_id"])
+        conn.commit(); conn.close()
         flash("Photo removed.", "info")
         return redirect(url_for("admin_gallery"))
 
@@ -442,19 +456,17 @@ def create_app():
             description = request.form.get("description", "").strip()
             link = request.form.get("url", "").strip()
             if not title:
-                flash("Please give the presentation a title.", "danger")
-                conn.close(); return redirect(url_for("admin_presentations"))
+                conn.close(); flash("Please give the presentation a title.", "danger")
+                return redirect(url_for("admin_presentations"))
             try:
-                stored = save_upload(request.files.get("file"), ALLOWED_DOC)
+                mid, orig = save_media(conn, request.files.get("file"), ALLOWED_DOC)
             except ValueError as e:
-                flash(str(e), "danger"); conn.close(); return redirect(url_for("admin_presentations"))
+                conn.close(); flash(str(e), "danger"); return redirect(url_for("admin_presentations"))
             conn.execute(
-                "INSERT INTO presentations (title, description, url, filename, created_at)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (title, description, link, stored, now_iso()),
-            )
-            conn.commit()
-            conn.close()
+                "INSERT INTO presentations (title, description, url, file_media_id, file_name, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (title, description, link, mid, orig, now_iso()))
+            conn.commit(); conn.close()
             flash("Presentation added.", "success")
             return redirect(url_for("admin_presentations"))
         items = conn.execute("SELECT * FROM presentations ORDER BY created_at DESC").fetchall()
@@ -465,12 +477,11 @@ def create_app():
     @login_required
     def admin_presentation_delete(item_id):
         conn = get_db()
-        row = conn.execute("SELECT filename FROM presentations WHERE id = ?", (item_id,)).fetchone()
-        if row:
-            delete_upload(row["filename"])
+        row = conn.execute("SELECT file_media_id FROM presentations WHERE id = ?", (item_id,)).fetchone()
         conn.execute("DELETE FROM presentations WHERE id = ?", (item_id,))
-        conn.commit()
-        conn.close()
+        if row:
+            delete_media(conn, row["file_media_id"])
+        conn.commit(); conn.close()
         flash("Presentation removed.", "info")
         return redirect(url_for("admin_presentations"))
 
@@ -500,18 +511,15 @@ def create_app():
             event_time = request.form.get("event_time", "").strip()
             location = request.form.get("location", "").strip()
             if not title or not event_date:
-                flash("Please add a title and a date.", "danger")
-                conn.close(); return redirect(request.url)
+                conn.close(); flash("Please add a title and a date.", "danger"); return redirect(request.url)
             if event_id:
-                conn.execute(
-                    "UPDATE events SET title=?, description=?, event_date=?, event_time=?, location=? WHERE id=?",
-                    (title, description, event_date, event_time, location, event_id))
+                conn.execute("UPDATE events SET title=?, description=?, event_date=?, event_time=?, location=? WHERE id=?",
+                             (title, description, event_date, event_time, location, event_id))
                 flash("Event updated.", "success")
             else:
-                conn.execute(
-                    "INSERT INTO events (title, description, event_date, event_time, location, created_at)"
-                    " VALUES (?, ?, ?, ?, ?, ?)",
-                    (title, description, event_date, event_time, location, now_iso()))
+                conn.execute("INSERT INTO events (title, description, event_date, event_time, location, created_at)"
+                             " VALUES (?, ?, ?, ?, ?, ?)",
+                             (title, description, event_date, event_time, location, now_iso()))
                 flash("Event added.", "success")
             conn.commit(); conn.close()
             return redirect(url_for("admin_events"))

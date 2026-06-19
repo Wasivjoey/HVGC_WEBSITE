@@ -14,8 +14,16 @@ It also links to **HVGC LINEUP** — the AV team scheduling app (separate projec
 - **Weekly live stream** — embeds whatever YouTube link the editor pastes in.
 - **Welcome, sermons/presentations, news/blog, photo gallery, visit & contact.**
 - A **Volunteer Portal** button (in the menu and footer) that links to HVGC LINEUP.
+- A **browsable photo gallery** (with a lightbox) and a **sermons archive** page.
 - Fully responsive, and **works even if JavaScript or the CDN is blocked**
   (animations are progressive enhancement only).
+
+## 💾 Database
+Runs on **Postgres** (set `DATABASE_URL`) or **SQLite** (default, local dev) from
+the same code. **Uploaded sermon files and photos are stored in the database**
+(not on disk), so they persist across deploys on hosts with an ephemeral
+filesystem — no separate disk required. The `render.yaml` provisions Postgres
+automatically.
 
 ## 🛠️ The content manager (no coding needed)
 Sign in at **`/admin`** and you get a friendly dashboard of plain-English tasks:

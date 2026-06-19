@@ -14,7 +14,7 @@
   <textarea name="body" rows="12" placeholder="Write your post here…">{{ p['body'] if p else '' }}</textarea>
 
   <label>Picture <span class="muted">(optional)</span></label>
-  {% if p and p['image'] %}<img class="thumb" src="{{ url_for('static', filename=p['image']) }}" alt=""><br>{% endif %}
+  {% if p and p['image_media_id'] %}<img class="thumb" src="{{ url_for('media', media_id=p['image_media_id']) }}" alt=""><br>{% endif %}
   <input type="file" name="image" accept="image/*">
 
   <label class="check" style="margin-top:14px;">

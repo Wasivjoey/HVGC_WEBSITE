@@ -19,7 +19,7 @@
   <div class="adm-gallery">
     {% for g in items %}
     <figure>
-      <img src="{{ url_for('static', filename=g['filename']) }}" alt="">
+      <img src="{{ url_for('media', media_id=g['media_id']) }}" alt="">
       <figcaption>{{ g['caption'] or '—' }}</figcaption>
       <form method="post" action="{{ url_for('admin_gallery_delete', item_id=g['id']) }}" onsubmit="return confirm('Remove this photo?');">
         <button class="btn btn-sm btn-danger">Remove</button>
