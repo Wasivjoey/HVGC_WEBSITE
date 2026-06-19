@@ -8,12 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
 </head>
 <body>
 <header class="nav" id="siteNav">
   <a class="brand" href="{{ url_for('home') }}">
-    <span class="brand-mark">⚓</span>
+    <img class="brand-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt="">
     <span class="brand-name">{{ S['church_name'] }}</span>
   </a>
   <button class="nav-toggle" aria-label="Menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
@@ -41,7 +41,7 @@
 <footer class="site-footer" id="visit">
   <div class="foot-grid">
     <div>
-      <div class="foot-brand"><span>⚓</span> {{ S['church_name'] }}</div>
+      <div class="foot-brand"><img class="foot-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt=""> {{ S['church_name'] }}</div>
       <p class="foot-verse">{{ S['hero_verse'] }}</p>
     </div>
     <div>

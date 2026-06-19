@@ -6,12 +6,12 @@
   <title>{% block title %}Manage · {{ S['church_name'] }}{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
 </head>
 <body>
 {% if is_admin %}
 <header class="adm-top">
-  <a class="adm-brand" href="{{ url_for('admin_dashboard') }}">⚓ Website Manager</a>
+  <a class="adm-brand" href="{{ url_for('admin_dashboard') }}"><img class="adm-logo" src="{{ url_for('static', filename='img/logo.png') }}" alt=""> Website Manager</a>
   <nav class="adm-nav">
     <a href="{{ url_for('admin_dashboard') }}">Home</a>
     <a href="{{ url_for('home') }}" target="_blank">View site ↗</a>

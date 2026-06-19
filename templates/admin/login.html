@@ -1,7 +1,7 @@
 {% extends "admin/base_admin.html" %}
 {% block body %}
 <div class="login-card">
-  <div class="login-logo">⚓</div>
+  <img class="login-logo-img" src="{{ url_for('static', filename='img/logo.png') }}" alt="">
   <h1>Website Manager</h1>
   <p class="muted">Sign in to update the church website</p>
   <form method="post">
