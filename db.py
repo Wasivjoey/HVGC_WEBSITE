@@ -90,7 +90,7 @@ DEFAULT_SETTINGS = {
     "address": "1 Harbour View Road, Seaside",
     "contact_email": "hello@harbourviewchapel.org",
     "contact_phone": "(000) 000-0000",
-    "lineup_url": "http://localhost:8000",
+    "lineup_url": "https://hvgc-lineup.onrender.com/login",
     "footer_note": "© Harbour View Gospel Chapel",
     "giving_heading": "Give",
     "giving_body": ("“Each of you should give what you have decided in your heart to give, "
