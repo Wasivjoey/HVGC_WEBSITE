@@ -55,7 +55,7 @@
     var geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     var mat = new THREE.PointsMaterial({
-      color: 0xd9a441, size: 0.05, transparent: true, opacity: 0.9,
+      color: 0x2f6d92, size: 0.05, transparent: true, opacity: 0.85,
       sizeAttenuation: true, depthWrite: false,
     });
     var water = new THREE.Points(geo, mat);
@@ -72,7 +72,7 @@
     var sGeo = new THREE.BufferGeometry();
     sGeo.setAttribute("position", new THREE.BufferAttribute(sPos, 3));
     var stars = new THREE.Points(sGeo, new THREE.PointsMaterial({
-      color: 0xf7f3ea, size: 0.06, transparent: true, opacity: 0.6, depthWrite: false,
+      color: 0xd9a441, size: 0.07, transparent: true, opacity: 0.75, depthWrite: false,
     }));
     scene.add(stars);
 
